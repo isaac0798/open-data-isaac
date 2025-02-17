@@ -61,7 +61,32 @@ def init_db():
         raise
     finally:
         db.close()
-        
+      
+      
+def insert_competition(db, competition_id, country_name, competition_name, competition_gender, competition_youth, competition_international):
+    cursor = db.cursor()
+    cursor.execute("""
+        REPLACE INTO competition (
+            id,
+            country_name,
+            competition_name,
+            competition_gender,
+            competition_youth,
+            competition_international
+        ) VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        competition_id,
+        country_name,
+        competition_name,
+        competition_gender,
+        competition_youth,
+        competition_international
+    ))
+    db.commit()
+    
+    return cursor.lastrowid
+    
+      
 def drop_all_tables():
     """Drop all tables in the database"""
     logger.warning("Dropping all database tables!")
