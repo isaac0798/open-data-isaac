@@ -1,6 +1,6 @@
 import json
 from fastapi import FastAPI
-from .database import get_db, init_db, drop_all_tables, insert_competition
+from .database import get_db, init_db, drop_all_tables, insert_competition, get_competitions, insert_season, get_seasons_for_competition, insert_match, get_matches_in_season
 import logging
 from pathlib import Path
 
@@ -18,11 +18,70 @@ async def startup_event():
 async def root():
     return {"message": "Hello testd"}
 
+@app.get("/process-matches")
+async def root():
+    db = get_db()
+    competitions = get_competitions(db)
+    
+    for competition in competitions:
+        seasons = get_seasons_for_competition(db, competition_id=competition['id'])
+        
+        for season in seasons:
+            matches_path = Path(f"data-json/matches/{competition['id']}/{season['id']}.json")
+            if matches_path.exists():
+                with open(matches_path) as f:
+                    matches = json.load(f)
+                    
+                    for match in matches:
+                        insert_match(
+                            db=db,
+                            match_id=match['match_id'],
+                            season_id=season['id']
+                        )
+                        
+@app.get("/process-events")
+async def root():
+    db = get_db()
+    competitions = get_competitions(db)
+    
+    for competition in competitions:
+        seasons = get_seasons_for_competition(db, competition_id=competition['id'])
+        
+        for season in seasons:
+            matches = get_matches_in_season(db, season['id'])
+            
+            for match in matches:
+                event_path = Path(f"data-json/events/{match['id']}.json")
+                if event_path.exists():
+                    with open(event_path) as f:
+                        events = json.load(f)
+                        
+                        print(events)
+                
+                        
+            
+
+
+@app.get("/process-seasons")
+async def root():
+    config_path = Path("data-json/competitions.json")
+    if config_path.exists():
+        with open(config_path) as f:
+            competitions = json.load(f)
+            db = get_db()
+            
+            for competition in competitions:
+                insert_season(
+                    db=db,
+                    competition_id=competition['competition_id'],
+                    season_id=competition['season_id'],
+                    season_name=competition['season_name']
+                )
+
 @app.get("/process-competition")
 async def root():
     config_path = Path("data-json/competitions.json")
     if config_path.exists():
-        print('hi')
         with open(config_path) as f:
             competitions = json.load(f)
             db = get_db()

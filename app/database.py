@@ -34,6 +34,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS season (
                 id INTEGER PRIMARY KEY,
                 competition_id INTEGER,
+                name TEXT,
                 FOREIGN KEY(competition_id) REFERENCES competition(id)
             )
         """)
@@ -61,8 +62,7 @@ def init_db():
         raise
     finally:
         db.close()
-      
-      
+            
 def insert_competition(db, competition_id, country_name, competition_name, competition_gender, competition_youth, competition_international):
     cursor = db.cursor()
     cursor.execute("""
@@ -85,8 +85,103 @@ def insert_competition(db, competition_id, country_name, competition_name, compe
     db.commit()
     
     return cursor.lastrowid
+
+def insert_match(db, match_id, season_id):
+    cursor = db.cursor()
+    cursor.execute("""
+        REPLACE INTO match (
+            id,
+            season_id
+        ) VALUES (?, ?)
+    """, (
+        match_id,
+        season_id
+    ))
+    db.commit()
+    
+    return cursor.lastrowid
+
+def insert_season(db, competition_id, season_id, season_name):
+    cursor = db.cursor()
+    cursor.execute("""
+        REPLACE INTO season (
+            id,
+            competition_id,
+            name
+        ) VALUES (?, ?, ?)
+    """, (
+        season_id,
+        competition_id,
+        season_name
+    ))
+    db.commit()
+    
+    return cursor.lastrowid
+
+def get_competitions(db):
+    cursor = db.cursor()
+    cursor.execute("""
+        SELECT *
+        FROM competition
+        ORDER BY id
+    """)
+    
+    competitions = []
+    for row in cursor.fetchall():
+        competition = {
+            'id': row[0],
+            'country_name': row[1],
+            'competition_name': row[2],
+            'competition_gender': row[3],
+            'competition_youth': row[4],
+            'competition_international': row[5]
+        }
+        competitions.append(competition)
+        
+    return competitions
+        
+def get_matches_in_season(db, season_id):
+    cursor = db.cursor()
+    cursor.execute("""
+        SELECT *
+        FROM MATCH
+        WHERE season_id = ?
+        ORDER BY id
+    """, (season_id,))
+    
+    matches = []
+    for row in cursor.fetchall():
+        match = {
+            'id': row[0],
+        }
+        matches.append(match)
+        
+    return matches
     
       
+def get_seasons_for_competition(db, competition_id):
+    cursor = db.cursor()
+    cursor.execute("""
+        SELECT 
+            id,
+            competition_id,
+            name
+        FROM season
+        WHERE competition_id = ?
+        ORDER BY id
+    """, (competition_id,))
+        
+    seasons = []
+    for row in cursor.fetchall():
+        season = {
+            'id': row[0],
+            'competition_id': row[1],
+            'name': row[2]
+        }
+        seasons.append(season)
+        
+    return seasons
+    
 def drop_all_tables():
     """Drop all tables in the database"""
     logger.warning("Dropping all database tables!")
