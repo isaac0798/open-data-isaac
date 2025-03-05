@@ -49,8 +49,16 @@ def init_db():
         
         db.execute("""
             CREATE TABLE IF NOT EXISTS match_event (
-                id INTEGER PRIMARY KEY,
-                match_id INTEGER,
+                id TEXT PRIMARY KEY,
+                match_id INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                type_id INTEGER NOT NULL,
+                player_id INTEGER NOT NULL,
+                player_name TEXT NOT NULL,
+                location_x REAL NOT NULL,
+                location_y REAL NOT NULL,
+                end_location_x REAL,
+                end_location_y REAL,
                 FOREIGN KEY(match_id) REFERENCES match(id)
             )
         """)
@@ -62,6 +70,38 @@ def init_db():
         raise
     finally:
         db.close()
+        
+def insert_event(db, match_id, event):
+    cursor = db.cursor()
+    cursor.execute("""
+        REPLACE INTO match_event (
+            id,
+            match_id,
+            type,
+            type_id,
+            player_id,
+            player_name,
+            location_x,
+            location_y,
+            end_location_x,
+            end_location_y
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        event['id'],
+        match_id,
+        event['type'],
+        event['type_id'],
+        event['player_id'],
+        event['player_name'],
+        event['location_x'],
+        event['location_y'],
+        event['end_location_x'],
+        event['end_location_y']
+    ))
+    db.commit()
+    
+    return cursor.lastrowid
+    
             
 def insert_competition(db, competition_id, country_name, competition_name, competition_gender, competition_youth, competition_international):
     cursor = db.cursor()
@@ -157,8 +197,7 @@ def get_matches_in_season(db, season_id):
         matches.append(match)
         
     return matches
-    
-      
+          
 def get_seasons_for_competition(db, competition_id):
     cursor = db.cursor()
     cursor.execute("""

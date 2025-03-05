@@ -1,6 +1,6 @@
 import json
 from fastapi import FastAPI
-from .database import get_db, init_db, drop_all_tables, insert_competition, get_competitions, insert_season, get_seasons_for_competition, insert_match, get_matches_in_season
+from .database import get_db, init_db, drop_all_tables, insert_competition, get_competitions, insert_season, get_seasons_for_competition, insert_match, get_matches_in_season, insert_event
 import logging
 from pathlib import Path
 
@@ -44,19 +44,65 @@ async def root():
     db = get_db()
     competitions = get_competitions(db)
     
-    for competition in competitions:
+    events_total = 0
+    for competition_idx, competition in enumerate(competitions):
         seasons = get_seasons_for_competition(db, competition_id=competition['id'])
         
-        for season in seasons:
+        for season_idx, season in enumerate(seasons):
             matches = get_matches_in_season(db, season['id'])
             
-            for match in matches:
+            for match_idx, match in enumerate(matches):
                 event_path = Path(f"data-json/events/{match['id']}.json")
                 if event_path.exists():
                     with open(event_path) as f:
                         events = json.load(f)
                         
-                        print(events)
+                        for event_idx, event in enumerate(events):
+                            print(f"event: {event_idx}/{len(events)} for match: {match_idx}/{len(matches)}, for season {season_idx}/{len(seasons)} for competition {competition_idx}/{len(competitions)}")
+                            
+                            events_total = events_total + 1
+                            if 'player' not in event:
+                                continue
+                            
+                            if 'location' not in event:
+                                continue
+                            
+                            eventType = event['type']['name'].lower()
+                            
+                            if eventType not in event:
+                                insert_event(db, match['id'], {
+                                    "id": event['id'],
+                                    "type": event['type']['name'],
+                                    "type_id": event['type']['id'],
+                                    "player_id": event['player']['id'],
+                                    "player_name": event['player']['name'],
+                                    "location_x": event['location'][0],
+                                    "location_y": event['location'][1],
+                                    "end_location_x": event['location'][0],
+                                    "end_location_y": event['location'][1]
+                                })
+                            else:
+                                end_location_x = event['location'][0]
+                                end_location_y = event['location'][1] 
+                                
+                                if eventType in event and 'end_location' in event[eventType]:
+                                    end_location_x = event[eventType]['end_location'][0]
+                                    end_location_y = event[eventType]['end_location'][1]
+                                
+                                insert_event(db, match['id'], {
+                                    "id": event['id'],
+                                    "type": event['type']['name'],
+                                    "type_id": event['type']['id'],
+                                    "player_id": event['player']['id'],
+                                    "player_name": event['player']['name'],
+                                    "location_x": event['location'][0],
+                                    "location_y": event['location'][1],
+                                    "end_location_x": end_location_x,
+                                    "end_location_y": end_location_y
+                                })
+                                
+    return events_total
+                            
                 
                         
             
